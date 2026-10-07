@@ -1,0 +1,40 @@
+name: CI + SonarQube
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Backend - instalar y probar
+        working-directory: BACKEND
+        run: |
+          npm ci
+          npm test
+
+      - name: Frontend - instalar, lint y build
+        working-directory: FRONTEND
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      # Solo corre si creas la variable de repo USE_SONAR=true y los secrets SONAR_TOKEN y SONAR_HOST_URL
+      # (SonarCloud o un SonarQube accesible desde internet).
+      - name: Análisis SonarQube
+        if: ${{ vars.USE_SONAR == 'true' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

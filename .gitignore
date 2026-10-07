@@ -1,0 +1,9 @@
+node_modules/
+**/node_modules/
+dist/
+coverage/
+.scannerwork/
+BACKEND/uploads/contracts/*
+!BACKEND/uploads/contracts/.gitkeep
+*.log
+.DS_Store
