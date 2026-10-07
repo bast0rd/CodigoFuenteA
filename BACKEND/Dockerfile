@@ -5,8 +5,8 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias (sin ejecutar scripts de instalación)
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copiar código de la aplicación
 COPY src/ ./src/
@@ -21,4 +21,3 @@ EXPOSE 3000
 
 # Comando para iniciar la aplicación
 CMD ["node", "src/app.js"]
-

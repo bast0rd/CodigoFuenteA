@@ -11,8 +11,49 @@ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
 // Función helper para simular latencia
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Límite de tamaño para los PDF subidos
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+    files: 1,
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(new Error("Solo se permiten archivos PDF"));
+    }
+    cb(null, true);
+  },
+});
+
+// Middleware que devuelve un error claro en vez de un 500 genérico
+function uploadPdf(req, res, next) {
+  upload.single("file")(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        error: "Archivo demasiado grande",
+        glosa: "El PDF no puede superar los 10 MB",
+      });
+    }
+    return res.status(400).json({
+      error: "Archivo inválido",
+      glosa: err.message,
+    });
+  });
+}
+
+// El mimetype lo declara el cliente, así que también revisamos la firma del PDF
+function isPdfBuffer(file) {
+  return (
+    file &&
+    file.buffer &&
+    file.buffer.subarray(0, 5).equals(Buffer.from("%PDF-"))
+  );
+}
 
 function getUserFromAuthHeader(req) {
   const auth = req.headers.authorization || "";
@@ -26,7 +67,7 @@ function getUserFromAuthHeader(req) {
 }
 
 // Crear contrato con archivo PDF (guardado en DB como bytea)
-router.post("/", upload.single("file"), async (req, res) => {
+router.post("/", uploadPdf, async (req, res) => {
   const {
     cliente_id,
     titulo,
@@ -35,6 +76,13 @@ router.post("/", upload.single("file"), async (req, res) => {
     fecha_fin,
   } = req.body;
   try {
+    if (req.file && !isPdfBuffer(req.file)) {
+      return res.status(400).json({
+        error: "Archivo inválido",
+        glosa: "El archivo no es un PDF válido",
+      });
+    }
+
     const clientIdNum = Number(cliente_id);
     const contractInsert = await pool.query(
       "INSERT INTO contratos (cliente_id, titulo, descripcion, fecha_inicio, fecha_fin) VALUES ($1, $2, $3, $4, $5) RETURNING *",
@@ -291,7 +339,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Actualizar contrato
-router.put("/:id", upload.single("file"), async (req, res) => {
+router.put("/:id", uploadPdf, async (req, res) => {
   try {
     const authUser = getUserFromAuthHeader(req);
 
@@ -300,6 +348,13 @@ router.put("/:id", upload.single("file"), async (req, res) => {
       return res.status(401).json({
         error: "No autorizado",
         glosa: "Token inválido o sin empresa asociada",
+      });
+    }
+
+    if (req.file && !isPdfBuffer(req.file)) {
+      return res.status(400).json({
+        error: "Archivo inválido",
+        glosa: "El archivo no es un PDF válido",
       });
     }
 

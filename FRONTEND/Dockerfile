@@ -6,26 +6,17 @@ WORKDIR /app
 # Argumento para la URL de la API
 ARG VITE_API_URL=http://localhost:4000
 
-# Copiar archivos de dependencias
+# Copiar archivos de dependencias (incluye package-lock.json)
 COPY package*.json ./
 
-# Limpiar completamente e instalar dependencias
-# Esto soluciona problemas con dependencias opcionales de rollup y esbuild
-RUN rm -rf node_modules package-lock.json && \
-    npm install && \
-    npm install @rollup/rollup-linux-x64-gnu --save-optional && \
-    npm rebuild esbuild
+# Instalar exactamente las versiones del lockfile, sin ejecutar scripts de instalación
+RUN npm ci --ignore-scripts
 
 # Copiar código fuente
 COPY . .
 
 # Establecer variable de entorno para el build
 ENV VITE_API_URL=${VITE_API_URL}
-
-# Reinstalar esbuild después de copiar todo para asegurar compatibilidad
-RUN rm -rf node_modules/.cache && \
-    npm rebuild esbuild --force || \
-    (npm uninstall esbuild && npm install esbuild)
 
 # Construir la aplicación
 RUN npm run build
@@ -44,4 +35,3 @@ EXPOSE 80
 
 # Comando para iniciar nginx
 CMD ["nginx", "-g", "daemon off;"]
-

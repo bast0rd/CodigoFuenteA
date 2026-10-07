@@ -20,13 +20,13 @@ jobs:
       - name: Backend - instalar y probar
         working-directory: BACKEND
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm test
 
       - name: Frontend - instalar, lint y build
         working-directory: FRONTEND
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run lint
           npm run build
 
@@ -34,7 +34,7 @@ jobs:
       # (SonarCloud o un SonarQube accesible desde internet).
       - name: Análisis SonarQube
         if: ${{ vars.USE_SONAR == 'true' }}
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5.3.2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
